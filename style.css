@@ -1,0 +1,123 @@
+/* style.css - Custom Aesthetic Styling */
+
+.aesthetic-bg {
+    background: linear-gradient(135deg, #120720 0%, #230c3a 100%) !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.aesthetic-header {
+    background-color: #190a28;
+    border-bottom: 2px solid #331452;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.text-purple-light {
+    color: #cbacf9;
+    font-weight: 600;
+}
+
+.shadow-aesthetic {
+    box-shadow: 0 8px 24px rgba(142, 68, 173, 0.4) !important;
+}
+
+.purple-card {
+    background-color: #1d0d30 !important;
+    border: 2px solid #3a1960 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 0 20px rgba(142, 68, 173, 0.15) !important;
+}
+
+.purple-card .form-control {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid #4a217a !important;
+    color: #ffffff !important;
+}
+
+.purple-card .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.purple-card .form-control:focus {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    border-color: #cbacf9 !important;
+    box-shadow: 0 0 12px rgba(203, 172, 249, 0.4) !important;
+}
+
+.purple-card input[type="datetime-local"], .purple-card select {
+    color: #ffffff !important;
+    color-scheme: dark;
+}
+
+.dropdown-purple option {
+    background-color: #1d0d30 !important;
+    color: #ffffff !important;
+}
+
+.btn-primary-gradient {
+    background: linear-gradient(90deg, #7b2cbf 0%, #9d4edd 100%) !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 30px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-primary-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(157, 78, 221, 0.4) !important;
+}
+
+.creator-footer {
+    background-color: #0f051c;
+    border-top: 2px solid #2b1147;
+}
+
+.text-footer {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.text-small-faded {
+    color: #cbacf9 !important;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.custom-modal-card {
+    background-color: #1d0d30 !important;
+    border: 2px solid #3a1960 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
+}
+
+.btn-warning-gradient {
+    background: linear-gradient(90deg, #ffb703 0%, #fb8500 100%) !important;
+    border: none !important;
+    transition: all 0.3s ease;
+}
+
+.btn-warning-gradient:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(251, 133, 0, 0.4);
+}
+
+.alarm-icon-animation {
+    display: inline-block;
+    animation: pulseSiren 1s infinite alternate;
+}
+
+@keyframes pulseSiren {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px #ff0055); }
+    100% { transform: scale(1.2) rotate(10deg); filter: drop-shadow(0 0 15px #ff0055); }
+}
+
+.blink-animation {
+    animation: criticalBlink 1.5s infinite;
+}
+
+@keyframes criticalBlink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
