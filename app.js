@@ -1,24 +1,28 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, where, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+// ADDED: Firebase Authentication methods
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCfvDkaVXt9nVfZeAnWvOC5q3iZ7_CMGJg",
-    authDomain: "smart-todo-app-5fcca.firebaseapp.com",
-    projectId: "smart-todo-app-5fcca",
-    storageBucket: "smart-todo-app-5fcca.firebasestorage.app",
-    messagingSenderId: "254079310651",
-    appId: "1:254079310651:web:5450581ad51efaf965351e"
+  apiKey: "AIzaSyCfvDkaVXt9nVFzeAnWVoC5q3iZ7_CMGJg",
+  authDomain: "smart-todo-app-5fcca.firebaseapp.com",
+  projectId: "smart-todo-app-5fcca",
+  storageBucket: "smart-todo-app-5fcca.firebasestorage.app",
+  messagingSenderId: "254079310651",
+  appId: "1:254079310651:web:5450581ad51efaf965351e"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app); // ADDED: Initialize Authentication Engine
 
 const playedAlerts = new Set();
 const dismissedAlerts = new Set(); 
 let itemPendingDeletion = null; 
 let activelyRingingAudio = null; 
-let currentRingingTaskId = null; // Tracks precisely which task is active to prevent stream flooding
+let currentRingingTaskId = null; 
 let localTasksArray = []; 
+let unsubscribeSnapshot = null; // Stores the real-time sync unbind listener
 
 const bootstrapDeleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 const bootstrapAlarmModal = new bootstrap.Modal(document.getElementById('alarmModal'));
@@ -27,24 +31,104 @@ if (Notification.permission !== "granted") {
     Notification.requestPermission();
 }
 
+// ================= COORDNATING LOGIC DOM TARGETS =================
+const authSection = document.getElementById('authSection');
+const mainAppSection = document.getElementById('mainAppSection');
+const authForm = document.getElementById('authForm');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const toggleAuthAction = document.getElementById('toggleAuthAction');
+const logoutBtn = document.getElementById('logoutBtn');
+
 const taskForm = document.getElementById('taskForm');
 const taskList = document.getElementById('taskList');
 const notificationArea = document.getElementById('notificationArea');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const dismissAlarmBtn = document.getElementById('dismissAlarmBtn');
 
-// GLOBAL AUDIO ENGINE UNLOCKER (Wakes up HTML5 Audio on your very first click)
+let isLoginMode = true; // Flag for toggling Login vs Register forms
+
+// GLOBAL AUDIO ENGINE UNLOCKER
 document.addEventListener('click', () => {
     const context = new (window.AudioContext || window.webkitAudioContext)();
     if (context.state === 'suspended') {
         context.resume();
     }
-    console.log("🔊 Browser audio engine successfully unlocked via user interaction!");
 }, { once: true });
 
-// 1. Submit Form to Firestore
+// ================= USER SESSION MANAGEMENT =================
+
+// Toggle UI text states between Login and Registration views
+toggleAuthAction.addEventListener('click', (e) => {
+    e.preventDefault();
+    isLoginMode = !isLoginMode;
+    if (isLoginMode) {
+        document.getElementById('authCardTitle').innerText = "Sign In";
+        authSubmitBtn.innerText = "Login";
+        toggleAuthAction.innerText = "Don't have an account? Sign Up";
+    } else {
+        document.getElementById('authCardTitle').innerText = "Create Account";
+        authSubmitBtn.innerText = "Register";
+        toggleAuthAction.innerText = "Already have an account? Login";
+    }
+});
+
+// Process Login / Account Creation Form Formats
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmail.value;
+    const password = authPassword.value;
+
+    try {
+        if (isLoginMode) {
+            await signInWithEmailAndPassword(auth, email, password);
+        } else {
+            await createUserWithEmailAndPassword(auth, email, password);
+        }
+        authForm.reset();
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+// Handle Session Termination
+logoutBtn.addEventListener('click', () => {
+    signOut(auth).then(() => {
+        if (activelyRingingAudio) {
+            activelyRingingAudio.pause();
+            activelyRingingAudio = null;
+        }
+    });
+});
+
+// Monitor Session Transitions Realtime
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Logged In: Swap containers, open listener channels
+        authSection.classList.add('d-none');
+        mainAppSection.classList.remove('d-none');
+        startRealTimeSync(user.uid);
+    } else {
+        // Logged Out: Reset views, kill active snapshot pipes
+        authSection.classList.remove('d-none');
+        mainAppSection.classList.add('d-none');
+        
+        if (unsubscribeSnapshot) {
+            unsubscribeSnapshot(); 
+        }
+        taskList.innerHTML = "";
+        localTasksArray = [];
+    }
+});
+
+// ================= DATA PIPELINE MANAGEMENT =================
+
+// 1. Submit Form to Firestore (Secured with userId tags)
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!auth.currentUser) return; // Prevent unauthorized writes
+
     const title = document.getElementById('taskTitle').value;
     const deadline = document.getElementById('taskDeadline').value;
     const offsetMinutes = parseInt(document.getElementById('taskOffset').value);
@@ -52,6 +136,7 @@ taskForm.addEventListener('submit', async (e) => {
 
     try {
         await addDoc(collection(db, "todos"), {
+            userId: auth.currentUser.uid, // ADDED: Tag item to exact user id ownership
             title: title,
             deadline: deadline,
             offset: offsetMinutes, 
@@ -64,21 +149,30 @@ taskForm.addEventListener('submit', async (e) => {
     }
 });
 
-// 2. Real-time Firebase Listener
-const q = query(collection(db, "todos"), orderBy("deadline", "asc"));
+// 2. Real-time Firebase Listener Filtered by User ID
+function startRealTimeSync(uid) {
+    // MODIFIED: Injected safety where query condition parameter 
+    const q = query(
+        collection(db, "todos"), 
+        where("userId", "==", uid), 
+        orderBy("deadline", "asc")
+    );
 
-onSnapshot(q, (snapshot) => {
-    localTasksArray = []; 
-    snapshot.forEach((snapshotDoc) => {
-        localTasksArray.push({
-            id: snapshotDoc.id,
-            ...snapshotDoc.data()
+    unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        localTasksArray = []; 
+        snapshot.forEach((snapshotDoc) => {
+            localTasksArray.push({
+                id: snapshotDoc.id,
+                ...snapshotDoc.data()
+            });
         });
+        renderTasksRealTime();
+    }, (error) => {
+        console.error("Query listener subscription failure:", error);
     });
-    renderTasksRealTime();
-});
+}
 
-// 3. Render Loop
+// 3. Render Loop View Engine
 function renderTasksRealTime() {
     taskList.innerHTML = ""; 
     notificationArea.innerHTML = ""; 
@@ -109,7 +203,6 @@ function renderTasksRealTime() {
             badgeHTML = `<span class="badge bg-danger px-3 py-2 rounded-pill">🚨 Alert Active</span>`;
             cardBorderClass = "border-danger border-2";
 
-            // OPTIMIZED: Checks both sets and current status to prevent stream stacking crashes
             if (!playedAlerts.has(task.id) && currentRingingTaskId !== task.id) {
                 playedAlerts.add(task.id);
                 currentRingingTaskId = task.id; 
@@ -117,7 +210,6 @@ function renderTasksRealTime() {
                 
                 const specificToneFile = task.tone || "beep.mp3";
                 
-                // Clear out stale loops smoothly before creating a new sound connection resource
                 if (activelyRingingAudio) { 
                     try {
                         activelyRingingAudio.pause();
@@ -131,8 +223,8 @@ function renderTasksRealTime() {
                 const playPromise = activelyRingingAudio.play();
                 if (playPromise !== undefined) {
                     playPromise
-                        .then(() => console.log(`🎵 Playing audio: ${specificToneFile}`))
-                        .catch(err => console.error("Audio playback paused by browser policy parameters:", err));
+                        .then(() => console.log(`Playing audio track module: ${specificToneFile}`))
+                        .catch(err => console.error("Audio engine failed to resolve automatically:", err));
                 }
                 
                 const formattedDeadlineText = deadlineDate.toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'});
@@ -178,7 +270,6 @@ function renderTasksRealTime() {
         taskList.appendChild(li);
     });
 
-    // Safely refresh structural click listener loops
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.replaceWith(button.cloneNode(true));
     });
@@ -191,14 +282,14 @@ function renderTasksRealTime() {
     });
 }
 
-// 4. Heartbeat Sync Check
+// 4. Heartbeat Sync Engine Checks
 setInterval(() => {
     if (localTasksArray.length > 0) {
         renderTasksRealTime();
     }
 }, 5000);
 
-// Delete Confirmation
+// Delete Confirmation Modal Click
 confirmDeleteBtn.addEventListener('click', async () => {
     if (itemPendingDeletion) {
         try {
@@ -211,7 +302,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// Dismiss Alarm
+// Dismiss Audio Engine Trigger
 dismissAlarmBtn.addEventListener('click', () => {
     if (activelyRingingAudio) {
         activelyRingingAudio.pause();
@@ -224,7 +315,7 @@ dismissAlarmBtn.addEventListener('click', () => {
         dismissedAlerts.add(activeTaskId);
     }
     
-    currentRingingTaskId = null; // Free tracking flag channel
+    currentRingingTaskId = null; 
     bootstrapAlarmModal.hide();
     renderTasksRealTime();
 });
@@ -234,12 +325,13 @@ function showBannerAlert(title) {
     alertDiv.className = "alert alert-warning alert-dismissible fade show mb-4 fw-bold shadow-lg";
     alertDiv.role = "alert";
     alertDiv.innerHTML = `
-        📌 <strong>Upcoming Alert:</strong> The plan <strong>"${title}"</strong> has an early warning tracking trigger closing in!
+        📌 <strong>Upcoming Alert:</strong> The plan <strong>"${title}"</strong> tracking trigger closing in!
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     notificationArea.appendChild(alertDiv);
 }
 
+// Native Desktop Browser System Dispatch
 function triggerSystemNotification(title) {
     if (Notification.permission === "granted") {
         new Notification("⏰ Early Alarm Reminder!", {
