@@ -4,16 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Todo App</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
     <style>
         /* YOUR EXACT ORIGINAL COLOR THEME & STYLES */
         body {
             background-color: #120720 !important;
             font-family: sans-serif;
+            padding-bottom: 80px; /* Prevents nav bar from blocking content */
+            color: white;
         }
         .purple-card {
             background-color: #1d0d30 !important;
             border: 1px solid #8a2be2 !important;
+            border-radius: 12px; /* Restores the smooth rounded corners */
         }
         .border-purple-accent {
             border-color: #8a2be2 !important;
@@ -33,7 +38,7 @@
             50% { opacity: 0; }
         }
 
-        /* NEW SLIDE CONTROLS (Keeps everything clean on one screen) */
+        /* NEW SLIDE CONTROLS */
         .app-slide {
             display: none; 
         }
@@ -41,7 +46,7 @@
             display: block !important;
         }
 
-        /* BOTTOM NAVBAR (Styled to perfectly match your dark purple theme) */
+        /* BOTTOM NAVBAR */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -76,9 +81,6 @@
             top: -5px;
             right: -10px;
             font-size: 10px;
-        }
-        body {
-            padding-bottom: 80px; /* Prevents nav bar from blocking content */
         }
     </style>
 </head>
