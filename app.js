@@ -17,11 +17,10 @@ const playedAlerts = new Set();
 const dismissedAlerts = new Set(); 
 let itemPendingDeletion = null; 
 let activelyRingingAudio = null; 
-let currentRingingTaskId = null; // Tracks precisely which task is active to prevent stream flooding
+let currentRingingTaskId = null; 
 let localTasksArray = []; 
 
 const bootstrapDeleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-const bootstrapAlarmModal = new bootstrap.Modal(document.getElementById('alarmModal'));
 
 if (Notification.permission !== "granted") {
     Notification.requestPermission();
@@ -33,13 +32,16 @@ const notificationArea = document.getElementById('notificationArea');
 const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 const dismissAlarmBtn = document.getElementById('dismissAlarmBtn');
 
-// GLOBAL AUDIO ENGINE UNLOCKER (Wakes up HTML5 Audio on your very first click)
+const ringingPlaceholder = document.getElementById('ringingPlaceholder');
+const activeRingingContent = document.getElementById('activeRingingContent');
+const navRingingBadge = document.getElementById('navRingingBadge');
+
+// AUDIO UNLOCKER
 document.addEventListener('click', () => {
     const context = new (window.AudioContext || window.webkitAudioContext)();
     if (context.state === 'suspended') {
         context.resume();
     }
-    console.log("🔊 Browser audio engine successfully unlocked via user interaction!");
 }, { once: true });
 
 // 1. Submit Form to Firestore
@@ -59,6 +61,11 @@ taskForm.addEventListener('submit', async (e) => {
             createdAt: new Date()
         });
         taskForm.reset(); 
+        
+        // Auto-navigate to "My List" slide after adding
+        const listTab = document.querySelectorAll('.nav-item')[1];
+        if(listTab) listTab.click();
+        
     } catch (error) {
         console.error("Error saving task: ", error);
     }
@@ -83,8 +90,11 @@ function renderTasksRealTime() {
     taskList.innerHTML = ""; 
     notificationArea.innerHTML = ""; 
     
+    let activeAlarmActiveRightNow = false;
+
     if (localTasksArray.length === 0) {
         taskList.innerHTML = `<li class="list-group-item text-center py-4 bg-transparent border-0 text-white-50">No plans listed yet. Add one above!</li>`;
+        clearAlarmSlideUI();
         return;
     }
 
@@ -108,8 +118,9 @@ function renderTasksRealTime() {
         } else if (minutesLeft <= 0) {
             badgeHTML = `<span class="badge bg-danger px-3 py-2 rounded-pill">🚨 Alert Active</span>`;
             cardBorderClass = "border-danger border-2";
+            
+            activeAlarmActiveRightNow = true;
 
-            // OPTIMIZED: Checks both sets and current status to prevent stream stacking crashes
             if (!playedAlerts.has(task.id) && currentRingingTaskId !== task.id) {
                 playedAlerts.add(task.id);
                 currentRingingTaskId = task.id; 
@@ -117,7 +128,6 @@ function renderTasksRealTime() {
                 
                 const specificToneFile = task.tone || "beep.mp3";
                 
-                // Clear out stale loops smoothly before creating a new sound connection resource
                 if (activelyRingingAudio) { 
                     try {
                         activelyRingingAudio.pause();
@@ -130,16 +140,24 @@ function renderTasksRealTime() {
                 
                 const playPromise = activelyRingingAudio.play();
                 if (playPromise !== undefined) {
-                    playPromise
-                        .then(() => console.log(`🎵 Playing audio: ${specificToneFile}`))
-                        .catch(err => console.error("Audio playback paused by browser policy parameters:", err));
+                    playPromise.catch(err => console.error("Audio block error:", err));
                 }
                 
                 const formattedDeadlineText = deadlineDate.toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'});
+                
+                // Mount Info to Slide 3 elements
                 document.getElementById('alarmTaskTitle').innerText = task.title || "Untitled Plan";
                 document.getElementById('alarmModalTime').innerText = `⚠️ Early warning reminder! Your absolute deadline is scheduled for: ${formattedDeadlineText}`;
                 
-                bootstrapAlarmModal.show();
+                // Toggle slide views instantly
+                ringingPlaceholder.classList.add('d-none');
+                activeRingingContent.classList.remove('d-none');
+                navRingingBadge.classList.remove('d-none');
+
+                // FORCE MOBILE REDIRECT TO SLIDE 3
+                const alarmsTab = document.querySelectorAll('.nav-item')[2];
+                if(alarmsTab) alarmsTab.click();
+                
                 triggerSystemNotification(task.title);
             }
         } else if (minutesLeft > 0 && minutesLeft <= 60) {
@@ -178,7 +196,11 @@ function renderTasksRealTime() {
         taskList.appendChild(li);
     });
 
-    // Safely refresh structural click listener loops
+    if (!activeAlarmActiveRightNow) {
+        clearAlarmSlideUI();
+    }
+
+    // Refresh structural listeners
     document.querySelectorAll('.delete-btn').forEach(button => {
         button.replaceWith(button.cloneNode(true));
     });
@@ -189,6 +211,14 @@ function renderTasksRealTime() {
             bootstrapDeleteModal.show(); 
         });
     });
+}
+
+function clearAlarmSlideUI() {
+    if(!activelyRingingAudio) {
+        ringingPlaceholder.classList.remove('d-none');
+        activeRingingContent.classList.add('d-none');
+        navRingingBadge.classList.add('d-none');
+    }
 }
 
 // 4. Heartbeat Sync Check
@@ -211,7 +241,7 @@ confirmDeleteBtn.addEventListener('click', async () => {
     }
 });
 
-// Dismiss Alarm
+// Dismiss Alarm Button Click
 dismissAlarmBtn.addEventListener('click', () => {
     if (activelyRingingAudio) {
         activelyRingingAudio.pause();
@@ -224,17 +254,23 @@ dismissAlarmBtn.addEventListener('click', () => {
         dismissedAlerts.add(activeTaskId);
     }
     
-    currentRingingTaskId = null; // Free tracking flag channel
-    bootstrapAlarmModal.hide();
+    currentRingingTaskId = null; 
+    clearAlarmSlideUI();
+    
+    // Auto-return to My List slide view right after dismissing
+    const listTab = document.querySelectorAll('.nav-item')[1];
+    if(listTab) listTab.click();
+    
     renderTasksRealTime();
 });
 
 function showBannerAlert(title) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = "alert alert-warning alert-dismissible fade show mb-4 fw-bold shadow-lg";
+    alertDiv.className = "alert alert-warning alert-dismissible fade show mb-4 fw-bold shadow-lg mx-auto";
+    alertDiv.style.maxWidth = "600px";
     alertDiv.role = "alert";
     alertDiv.innerHTML = `
-        📌 <strong>Upcoming Alert:</strong> The plan <strong>"${title}"</strong> has an early warning tracking trigger closing in!
+        📌 <strong>Upcoming Alert:</strong> The plan <strong>"${title}"</strong> tracking trigger closing in!
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     notificationArea.appendChild(alertDiv);
