@@ -3,101 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Todo App</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <style>
-        body {
-            background-color: #120720 !important;
-            font-family: sans-serif;
-            color: white;
-        }
-        .purple-card {
-            background-color: #1d0d30 !important;
-            border: 1px solid #8a2be2 !important;
-            border-radius: 12px;
-        }
-        .border-purple-accent {
-            border-color: #8a2be2 !important;
-        }
-        .shadow-aesthetic {
-            box-shadow: 0 8px 32px 0 rgba(138, 43, 226, 0.2);
-        }
-        .dropdown-purple {
-            background-color: #120720 !important;
-            color: white !important;
-            border: 1px solid #8a2be2 !important;
-        }
-        .blink-animation {
-            animation: blinker 1.5s linear infinite;
-        }
-        @keyframes blinker {
-            50% { opacity: 0; }
-        }
-    </style>
+    <title>My Smart Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
 </head>
-<body>
+<body class="aesthetic-bg d-flex flex-column min-vh-100">
 
-    <div class="container py-4">
-        <header class="d-flex justify-content-between align-items-center mb-5 mt-2">
-            <h1 class="fw-bold text-white mb-0">📌 Task Planner & Reminder</h1>
-            <small class="text-white-50">Purple Tracker By Ginaline Lopez</small>
-        </header>
+    <header class="aesthetic-header py-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 m-0 text-white font-weight-bold">📌 Task Planner & Reminder</h1>
+            <div class="header-credit text-white-50">Aesthetic Tracker By: Ginaline Lopez</div>
+        </div>
+    </header>
 
-        <div id="notificationArea" class="mb-4"></div>
+    <div class="container my-5 flex-grow-1">
+        <div id="notificationArea"></div>
 
-        <div class="row g-4">
-            <div class="col-md-5">
-                <div class="card purple-card text-white p-4 shadow-aesthetic">
-                    <h3 class="mb-4 fw-bold">Add New Plan</h3>
+        <div class="row justify-content-center">
+            <div class="col-md-5 mb-4">
+                <div class="card shadow-aesthetic purple-card p-4 text-white">
+                    <h4 class="card-title mb-4 text-purple-light">Add New Plan</h4>
                     <form id="taskForm">
                         <div class="mb-3">
                             <label for="taskTitle" class="form-label">Task / Plan</label>
-                            <input type="text" class="form-control dropdown-purple" id="taskTitle" required placeholder="e.g., Submit Project">
+                            <input type="text" class="form-control" id="taskTitle" placeholder="e.g., Submit Project" required>
                         </div>
                         <div class="mb-3">
                             <label for="taskDeadline" class="form-label">Deadline (Date & Time)</label>
-                            <input type="datetime-local" class="form-control dropdown-purple" id="taskDeadline" required>
+                            <input type="datetime-local" class="form-control" id="taskDeadline" required>
                         </div>
+                        
                         <div class="mb-3">
-                            <label for="taskOffset" class="form-label">Trigger Alarm Early?</label>
-                            <select class="form-select dropdown-purple" id="taskOffset">
+                            <label for="taskOffset" class="form-label text-purple-light small fw-bold">⏰ Trigger Alarm Early?</label>
+                            <select class="form-select form-control dropdown-purple" id="taskOffset">
                                 <option value="0">Exactly on time</option>
-                                <option value="5">5 minutes early</option>
-                                <option value="60">1 hour early</option>
-                                <option value="1440">1 day early</option>
+                                <option value="5">5 minutes before</option>
+                                <option value="60">1 hour before</option>
+                                <option value="1440">1 day before (24 Hours Early)</option>
                             </select>
                         </div>
+
                         <div class="mb-3">
-                            <label for="taskTone" class="form-label">Select Notification Tone</label>
-                            <select class="form-select dropdown-purple" id="taskTone">
+                            <label for="taskTone" class="form-label text-purple-light small fw-bold">Select Notification Tone</label>
+                            <select class="form-select form-control dropdown-purple" id="taskTone">
                                 <option value="dferun-ethereal-breeze-332384.mp3">Ethereal Breeze Tone</option>
-                                <option value="giazalea-alarm-21264.mp3">Giazalea Alarm Tone</option>
-                                <option value="u_tj8wl5z0vw-itrippin-alarm-496913.mp3">iTrippin Alarm Tone</option>
+                               <option value="giazalea-alarm-21264.mp3">Giazalea Alarm Tone</option>
+                               <option value="u_tj8wl5z0vw-itrippin-alarm-496913.mp3">iTrippin Alarm Tone</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-outline-light w-100 fw-bold mt-2" style="background: rgba(138, 43, 226, 0.2); border-color: #8a2be2;">Add to List</button>
+                        <button type="submit" class="btn btn-primary-gradient w-100 mt-2 py-2">Add to List</button>
                     </form>
                 </div>
             </div>
 
             <div class="col-md-7">
-                <div class="card purple-card text-white p-4 shadow-aesthetic">
-                    <h3 class="mb-4 fw-bold">My Upcoming Plans</h3>
-                    <ul class="list-group" id="taskList">
-                        </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="alarmModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="alarmModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content purple-card text-white border border-danger border-2 shadow-aesthetic">
-                <div class="modal-body text-center p-5">
-                    <h1 class="blink-animation text-danger mb-4">🚨 Early Reminder Alert!</h1>
-                    <h2 id="alarmTaskTitle" class="fw-bold mb-3">Task Title</h2>
-                    <p id="alarmModalTime" class="text-warning mb-4">Deadline Details</p>
-                    <button type="button" class="btn btn-warning btn-lg w-100 fw-bold rounded-pill py-3" id="dismissAlarmBtn">Dismiss Alarm</button>
+                <div class="card shadow-aesthetic purple-card p-4">
+                    <h4 class="card-title mb-4 text-purple-light">My Upcoming Plans</h4>
+                    <ul class="list-group p-0" id="taskList"></ul>
                 </div>
             </div>
         </div>
@@ -105,23 +67,46 @@
 
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content purple-card text-white">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold">Cancel Scheduled Event?</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-white-50 py-2">
-                    Are you sure you want to remove this plan from your sync record? This action cannot be undone.
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-outline-light btn-sm" data-bs-dismiss="modal">Keep Plan</button>
-                    <button type="button" class="btn btn-danger btn-sm px-3" id="confirmDeleteBtn">Yes, Remove</button>
+            <div class="modal-content custom-modal-card">
+                <div class="modal-body text-center p-4">
+                    <div class="text-danger h1 mb-3">⚠️</div>
+                    <h5 class="text-white mb-2">Cancel This Plan?</h5>
+                    <p class="text-white-50 small">Are you sure you want to permanently delete this event from your tracker?</p>
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <button type="button" class="btn btn-outline-light px-4 rounded-pill btn-sm" data-bs-dismiss="modal">Keep It</button>
+                        <button type="button" id="confirmDeleteBtn" class="btn btn-danger px-4 rounded-pill btn-sm">Yes, Cancel It</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <div class="modal fade" id="alarmModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content custom-modal-card border-warning">
+                <div class="modal-body text-center p-4">
+                    <div class="alarm-icon-animation h1 mb-3">🚨</div>
+                    <h4 class="text-warning fw-bold mb-2">Early Reminder Alert!</h4>
+                    <h5 id="alarmTaskTitle" class="text-white my-3">Task Title Here</h5>
+                    
+                    <p id="alarmModalTime" class="text-white-50 small"></p>
+                    
+                    <div class="mt-4">
+                        <button type="button" id="dismissAlarmBtn" class="btn btn-warning-gradient px-5 py-2 rounded-pill fw-bold text-dark">Dismiss Alarm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="creator-footer py-4 mt-auto">
+        <div class="container text-center">
+            <p class="text-footer m-0 text-white">✨ Made with love & pixels by Ginaline Lopez ✨</p>
+            <small class="text-small-faded mt-1 d-block">Remember to take a break and drink some water today! 💖</small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
